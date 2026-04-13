@@ -1,0 +1,77 @@
+{
+  "kind": "collectionType",
+  "collectionName": "posts",
+  "info": {
+    "singularName": "post",
+    "pluralName": "posts",
+    "displayName": "Post",
+    "description": "A feed post. Discriminated by `type`: measurements carry waist+snapshot height; link/image_embed/youtube carry a third-party URL with optional metadata so we never host user content."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "type": {
+      "type": "enumeration",
+      "enum": ["measurement", "link", "image_embed", "youtube"],
+      "required": true,
+      "default": "measurement"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["visible", "in_review", "hidden"],
+      "required": true,
+      "default": "visible"
+    },
+    "reportCount": {
+      "type": "integer",
+      "default": 0,
+      "min": 0
+    },
+    "caption": {
+      "type": "text",
+      "maxLength": 500
+    },
+    "waistCm": {
+      "type": "integer",
+      "min": 30,
+      "max": 250
+    },
+    "heightSnapshotCm": {
+      "type": "integer",
+      "min": 80,
+      "max": 260
+    },
+    "url": {
+      "type": "text",
+      "maxLength": 2000
+    },
+    "linkTitle": {
+      "type": "text",
+      "maxLength": 200
+    },
+    "linkDescription": {
+      "type": "text",
+      "maxLength": 500
+    },
+    "linkImageUrl": {
+      "type": "text",
+      "maxLength": 2000
+    },
+    "linkSiteName": {
+      "type": "text",
+      "maxLength": 100
+    },
+    "youtubeVideoId": {
+      "type": "string",
+      "maxLength": 20
+    },
+    "author": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::profile.profile",
+      "inversedBy": "posts"
+    }
+  }
+}

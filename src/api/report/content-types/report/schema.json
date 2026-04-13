@@ -1,0 +1,41 @@
+{
+  "kind": "collectionType",
+  "collectionName": "reports",
+  "info": {
+    "singularName": "report",
+    "pluralName": "reports",
+    "displayName": "Report",
+    "description": "A user-submitted report against a post. When 3+ distinct reports accumulate on a post, the post is auto-hidden and the author's reputation decrements."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "post": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::post.post"
+    },
+    "reporter": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::profile.profile"
+    },
+    "reason": {
+      "type": "enumeration",
+      "enum": ["spam", "inappropriate", "misleading", "harmful", "other"],
+      "required": true
+    },
+    "details": {
+      "type": "text",
+      "maxLength": 500
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["pending", "upheld", "dismissed"],
+      "default": "pending",
+      "required": true
+    }
+  }
+}

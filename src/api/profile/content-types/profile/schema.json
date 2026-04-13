@@ -1,0 +1,67 @@
+{
+  "kind": "collectionType",
+  "collectionName": "profiles",
+  "info": {
+    "singularName": "profile",
+    "pluralName": "profiles",
+    "displayName": "Profile",
+    "description": "Public-facing profile owned 1:1 by a users-permissions user"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "displayName": {
+      "type": "string",
+      "required": true,
+      "minLength": 2,
+      "maxLength": 40
+    },
+    "bio": {
+      "type": "text",
+      "maxLength": 280
+    },
+    "heightCm": {
+      "type": "integer",
+      "min": 80,
+      "max": 260
+    },
+    "avatar": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": ["images"]
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "displayName"
+    },
+    "reputationScore": {
+      "type": "integer",
+      "default": 100,
+      "min": 0,
+      "max": 100
+    },
+    "postingStatus": {
+      "type": "enumeration",
+      "enum": ["active", "frozen"],
+      "required": true,
+      "default": "active"
+    },
+    "frozenUntil": {
+      "type": "datetime"
+    },
+    "upheldReportCount": {
+      "type": "integer",
+      "default": 0,
+      "min": 0
+    },
+    "posts": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::post.post",
+      "mappedBy": "author"
+    }
+  }
+}
