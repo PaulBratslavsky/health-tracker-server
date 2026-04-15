@@ -201,6 +201,30 @@ export default {
         return result;
       }
 
+      // Pattern D, Rule 3: anonymous post.find / post.findOne / post.findMany —
+      // hide posts whose author has not opted into public visibility. Logged-in
+      // callers see every post (subject to other filters); anonymous callers
+      // only see posts from profiles with `isPublic === true`. This is what
+      // makes the landing-page feed preview safe without leaking private users.
+      if (
+        context.uid === 'api::post.post' &&
+        (context.action === 'findMany' ||
+          context.action === 'findOne' ||
+          context.action === 'findFirst') &&
+        !user
+      ) {
+        const params = (context.params ?? {}) as {
+          filters?: Record<string, unknown>;
+        };
+        const existingFilters = (params.filters ?? {}) as Record<string, unknown>;
+        const existingAuthor = (existingFilters.author ?? {}) as Record<string, unknown>;
+        params.filters = {
+          ...existingFilters,
+          author: { ...existingAuthor, isPublic: true },
+        };
+        context.params = params as typeof context.params;
+      }
+
       return next();
     });
   },
@@ -235,6 +259,7 @@ export default {
               reputationScore: 100,
               upheldReportCount: 0,
               tier: 'free',
+              isPublic: false,
             },
           });
 
@@ -275,8 +300,39 @@ export default {
         await strapi.db.connection.raw(
           'UPDATE posts SET report_count = 0 WHERE report_count IS NULL',
         );
+
+        // Profile: Phase 11 (public visibility) — default to private for any
+        // pre-existing row so existing users aren't retroactively exposed.
+        await strapi.db.connection.raw(
+          'UPDATE profiles SET is_public = 0 WHERE is_public IS NULL',
+        );
       } catch (err) {
         strapi.log.warn('[bootstrap backfill] one or more UPDATEs failed:', err);
+      }
+    })();
+
+    // Grant the public role read access to posts so the landing-page feed
+    // preview works without a JWT. The middleware above filters the results
+    // to only posts from public profiles. Idempotent — re-running is a no-op.
+    void (async () => {
+      try {
+        const publicRole: any = await strapi
+          .db.query('plugin::users-permissions.role')
+          .findOne({ where: { type: 'public' } });
+        if (!publicRole) return;
+
+        for (const action of ['api::post.post.find', 'api::post.post.findOne']) {
+          const existing = await strapi
+            .db.query('plugin::users-permissions.permission')
+            .findOne({ where: { action, role: publicRole.id } });
+          if (!existing) {
+            await strapi
+              .db.query('plugin::users-permissions.permission')
+              .create({ data: { action, role: publicRole.id } });
+          }
+        }
+      } catch (err) {
+        strapi.log.warn('[bootstrap public-post grant] failed:', err);
       }
     })();
   },

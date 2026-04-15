@@ -69,6 +69,11 @@
       "default": 0,
       "min": 0
     },
+    "isPublic": {
+      "type": "boolean",
+      "default": false,
+      "required": true
+    },
     "posts": {
       "type": "relation",
       "relation": "oneToMany",
