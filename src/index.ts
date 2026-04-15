@@ -244,5 +244,40 @@ export default {
         });
       },
     });
+
+    // Idempotent backfill for new required fields whose defaults weren't
+    // applied to rows that pre-date the schema addition. Strapi's auto-
+    // migration adds the column but doesn't always populate existing rows
+    // (SQLite ALTER TABLE limitation; Postgres behavior varies by the exact
+    // generated SQL). Every UPDATE below has a `WHERE ... IS NULL` guard,
+    // so subsequent boots are free no-ops. See docs/premium-tier-plan.md
+    // and the "Bootstrap-backfill pattern" discussion for rationale.
+    void (async () => {
+      try {
+        // Profile: Phase 7 (moderation) + Phase 10 (premium tier) fields
+        await strapi.db.connection.raw(
+          "UPDATE profiles SET tier = 'free' WHERE tier IS NULL OR tier = ''",
+        );
+        await strapi.db.connection.raw(
+          'UPDATE profiles SET reputation_score = 100 WHERE reputation_score IS NULL',
+        );
+        await strapi.db.connection.raw(
+          "UPDATE profiles SET posting_status = 'active' WHERE posting_status IS NULL OR posting_status = ''",
+        );
+        await strapi.db.connection.raw(
+          'UPDATE profiles SET upheld_report_count = 0 WHERE upheld_report_count IS NULL',
+        );
+
+        // Post: Phase 7 (moderation) fields
+        await strapi.db.connection.raw(
+          "UPDATE posts SET status = 'visible' WHERE status IS NULL OR status = ''",
+        );
+        await strapi.db.connection.raw(
+          'UPDATE posts SET report_count = 0 WHERE report_count IS NULL',
+        );
+      } catch (err) {
+        strapi.log.warn('[bootstrap backfill] one or more UPDATEs failed:', err);
+      }
+    })();
   },
 };
