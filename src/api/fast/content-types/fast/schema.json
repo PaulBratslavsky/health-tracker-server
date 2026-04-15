@@ -1,0 +1,38 @@
+{
+  "kind": "collectionType",
+  "collectionName": "fasts",
+  "info": {
+    "singularName": "fast",
+    "pluralName": "fasts",
+    "displayName": "Fast",
+    "description": "A fasting session owned by a profile. Track-only — intentionally non-social, not shown in the feed, no points or leaderboards. Hard-capped at 36 hours server-side."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "startedAt": {
+      "type": "datetime",
+      "required": true
+    },
+    "endedAt": {
+      "type": "datetime"
+    },
+    "targetHours": {
+      "type": "integer",
+      "min": 1,
+      "max": 36
+    },
+    "cancelled": {
+      "type": "boolean",
+      "default": false,
+      "required": true
+    },
+    "author": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::profile.profile"
+    }
+  }
+}

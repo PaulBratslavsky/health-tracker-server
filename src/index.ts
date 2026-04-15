@@ -225,6 +225,132 @@ export default {
         context.params = params as typeof context.params;
       }
 
+      // Pattern D, Rule 4: fast.create — inject author from the caller's
+      // profile, reject if the user already has an unended fast, and reject
+      // anonymous callers outright. Fasts are intentionally personal-only;
+      // they never become social artifacts.
+      if (
+        context.uid === 'api::fast.fast' &&
+        context.action === 'create'
+      ) {
+        if (!user) {
+          throw new errors.UnauthorizedError('You must be signed in to start a fast');
+        }
+
+        const fullUser: any = await strapi
+          .documents('plugin::users-permissions.user')
+          .findOne({
+            documentId: user.documentId,
+            populate: { profile: true },
+          });
+        const profile = fullUser?.profile;
+        if (!profile) {
+          throw new errors.ApplicationError('Profile required before fasting');
+        }
+
+        const activeFast: any = await strapi
+          .documents('api::fast.fast')
+          .findFirst({
+            filters: {
+              author: { documentId: profile.documentId },
+              endedAt: { $null: true },
+              cancelled: { $eq: false },
+            },
+          });
+        if (activeFast) {
+          throw new errors.ApplicationError(
+            'You already have an active fast — end it before starting a new one',
+          );
+        }
+
+        const data = (context.params as WithData).data ?? {};
+        data.author = profile.documentId;
+        data.cancelled = false;
+        // startedAt defaults to now if the client didn't supply it. The
+        // client always supplies it, but be defensive.
+        if (!data.startedAt) {
+          data.startedAt = new Date().toISOString();
+        }
+        (context.params as WithData).data = data;
+      }
+
+      // Pattern D, Rule 5: fast.update — enforce the 36h cap server-side.
+      // If an `endedAt` is supplied and the span from `startedAt` exceeds
+      // 36h, clamp to exactly 36h. This is the safety guardrail: no user,
+      // no malicious client, and no forgotten timer can record a fast
+      // longer than 36 hours. Route-level is-owner middleware already
+      // ensures the caller owns the entry.
+      if (
+        context.uid === 'api::fast.fast' &&
+        context.action === 'update'
+      ) {
+        const params = context.params as {
+          documentId?: string;
+          data?: Record<string, unknown>;
+        };
+        const data = (params.data ?? {}) as Record<string, unknown>;
+
+        if (data.endedAt) {
+          const existing: any = await strapi
+            .documents('api::fast.fast')
+            .findOne({ documentId: params.documentId });
+          if (existing?.startedAt) {
+            const startedMs = new Date(existing.startedAt).getTime();
+            const endedMs = new Date(data.endedAt as string).getTime();
+            const capMs = startedMs + 36 * 60 * 60 * 1000;
+            if (endedMs > capMs) {
+              data.endedAt = new Date(capMs).toISOString();
+              params.data = data;
+            }
+          }
+        }
+      }
+
+      // Pattern D, Rule 6: fast.findMany / findOne / findFirst — owner-only
+      // at all times. Anonymous callers get nothing; authenticated callers
+      // can only see their own fasts. Fasts never leak across profiles.
+      if (
+        context.uid === 'api::fast.fast' &&
+        (context.action === 'findMany' ||
+          context.action === 'findOne' ||
+          context.action === 'findFirst')
+      ) {
+        if (!user) {
+          // Anonymous — force-empty the result set via an impossible filter.
+          const params = (context.params ?? {}) as {
+            filters?: Record<string, unknown>;
+          };
+          params.filters = { ...(params.filters ?? {}), author: { documentId: '__none__' } };
+          context.params = params as typeof context.params;
+        } else {
+          const fullUser: any = await strapi
+            .documents('plugin::users-permissions.user')
+            .findOne({
+              documentId: user.documentId,
+              populate: { profile: true },
+            });
+          const profileDocId = fullUser?.profile?.documentId;
+          if (!profileDocId) {
+            const params = (context.params ?? {}) as {
+              filters?: Record<string, unknown>;
+            };
+            params.filters = { ...(params.filters ?? {}), author: { documentId: '__none__' } };
+            context.params = params as typeof context.params;
+          } else {
+            const params = (context.params ?? {}) as {
+              filters?: Record<string, unknown>;
+            };
+            const existingFilters = (params.filters ?? {}) as Record<string, unknown>;
+            const existingAuthor = (existingFilters.author ?? {}) as Record<string, unknown>;
+            params.filters = {
+              ...existingFilters,
+              author: { ...existingAuthor, documentId: profileDocId },
+            };
+            context.params = params as typeof context.params;
+          }
+        }
+      }
+
       return next();
     });
   },
@@ -311,28 +437,49 @@ export default {
       }
     })();
 
-    // Grant the public role read access to posts so the landing-page feed
-    // preview works without a JWT. The middleware above filters the results
-    // to only posts from public profiles. Idempotent — re-running is a no-op.
+    // Grant permissions idempotently. Two roles, different needs:
+    //   - public: post.find / post.findOne (landing-page feed preview; the
+    //     document-service middleware filters results to `isPublic` profiles)
+    //   - authenticated: fast.find / findOne / create / update / delete
+    //     (fasts are owner-only at every layer; the middleware enforces it)
     void (async () => {
-      try {
-        const publicRole: any = await strapi
-          .db.query('plugin::users-permissions.role')
-          .findOne({ where: { type: 'public' } });
-        if (!publicRole) return;
+      const grants: Array<{ type: 'public' | 'authenticated'; actions: string[] }> = [
+        {
+          type: 'public',
+          actions: ['api::post.post.find', 'api::post.post.findOne'],
+        },
+        {
+          type: 'authenticated',
+          actions: [
+            'api::fast.fast.find',
+            'api::fast.fast.findOne',
+            'api::fast.fast.create',
+            'api::fast.fast.update',
+            'api::fast.fast.delete',
+          ],
+        },
+      ];
 
-        for (const action of ['api::post.post.find', 'api::post.post.findOne']) {
-          const existing = await strapi
-            .db.query('plugin::users-permissions.permission')
-            .findOne({ where: { action, role: publicRole.id } });
-          if (!existing) {
-            await strapi
+      for (const grant of grants) {
+        try {
+          const role: any = await strapi
+            .db.query('plugin::users-permissions.role')
+            .findOne({ where: { type: grant.type } });
+          if (!role) continue;
+
+          for (const action of grant.actions) {
+            const existing = await strapi
               .db.query('plugin::users-permissions.permission')
-              .create({ data: { action, role: publicRole.id } });
+              .findOne({ where: { action, role: role.id } });
+            if (!existing) {
+              await strapi
+                .db.query('plugin::users-permissions.permission')
+                .create({ data: { action, role: role.id } });
+            }
           }
+        } catch (err) {
+          strapi.log.warn(`[bootstrap ${grant.type}-grant] failed:`, err);
         }
-      } catch (err) {
-        strapi.log.warn('[bootstrap public-post grant] failed:', err);
       }
     })();
   },

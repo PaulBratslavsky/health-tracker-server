@@ -430,6 +430,45 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiFastFast extends Struct.CollectionTypeSchema {
+  collectionName: 'fasts';
+  info: {
+    description: 'A fasting session owned by a profile. Track-only \u2014 intentionally non-social, not shown in the feed, no points or leaderboards. Hard-capped at 36 hours server-side.';
+    displayName: 'Fast';
+    pluralName: 'fasts';
+    singularName: 'fast';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    author: Schema.Attribute.Relation<'manyToOne', 'api::profile.profile'>;
+    cancelled: Schema.Attribute.Boolean &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<false>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    endedAt: Schema.Attribute.DateTime;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::fast.fast'> &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    startedAt: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    targetHours: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 36;
+          min: 1;
+        },
+        number
+      >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiPostPost extends Struct.CollectionTypeSchema {
   collectionName: 'posts';
   info: {
@@ -1148,6 +1187,7 @@ declare module '@strapi/strapi' {
       'admin::transfer-token': AdminTransferToken;
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
+      'api::fast.fast': ApiFastFast;
       'api::post.post': ApiPostPost;
       'api::profile.profile': ApiProfileProfile;
       'api::report.report': ApiReportReport;
