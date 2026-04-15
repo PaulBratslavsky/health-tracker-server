@@ -458,6 +458,7 @@ export interface ApiPostPost extends Struct.CollectionTypeSchema {
         },
         number
       >;
+    image: Schema.Attribute.Media<'images'>;
     linkDescription: Schema.Attribute.Text &
       Schema.Attribute.SetMinMaxLength<{
         maxLength: 500;
@@ -561,6 +562,8 @@ export interface ApiProfileProfile extends Struct.CollectionTypeSchema {
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'active'>;
     posts: Schema.Attribute.Relation<'oneToMany', 'api::post.post'>;
+    premiumSince: Schema.Attribute.DateTime;
+    premiumUntil: Schema.Attribute.DateTime;
     publishedAt: Schema.Attribute.DateTime;
     reputationScore: Schema.Attribute.Integer &
       Schema.Attribute.SetMinMax<
@@ -572,6 +575,9 @@ export interface ApiProfileProfile extends Struct.CollectionTypeSchema {
       > &
       Schema.Attribute.DefaultTo<100>;
     slug: Schema.Attribute.UID<'displayName'>;
+    tier: Schema.Attribute.Enumeration<['free', 'premium']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'free'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;

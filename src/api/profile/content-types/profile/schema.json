@@ -37,6 +37,18 @@
       "type": "uid",
       "targetField": "displayName"
     },
+    "tier": {
+      "type": "enumeration",
+      "enum": ["free", "premium"],
+      "required": true,
+      "default": "free"
+    },
+    "premiumSince": {
+      "type": "datetime"
+    },
+    "premiumUntil": {
+      "type": "datetime"
+    },
     "reputationScore": {
       "type": "integer",
       "default": 100,

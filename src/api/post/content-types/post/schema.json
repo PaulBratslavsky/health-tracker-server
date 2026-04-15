@@ -33,6 +33,12 @@
       "type": "text",
       "maxLength": 500
     },
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": ["images"]
+    },
     "waistCm": {
       "type": "integer",
       "min": 30,

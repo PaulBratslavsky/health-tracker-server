@@ -234,6 +234,7 @@ export default {
               postingStatus: 'active',
               reputationScore: 100,
               upheldReportCount: 0,
+              tier: 'free',
             },
           });
 
