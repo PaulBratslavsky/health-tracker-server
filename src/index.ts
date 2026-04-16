@@ -446,7 +446,14 @@ export default {
       const grants: Array<{ type: 'public' | 'authenticated'; actions: string[] }> = [
         {
           type: 'public',
-          actions: ['api::post.post.find', 'api::post.post.findOne'],
+          actions: [
+            'api::post.post.find',
+            'api::post.post.findOne',
+            // Content is community-owned: AI-generated summaries are
+            // readable by anyone, signed in or not.
+            'api::content.content.find',
+            'api::content.content.findOne',
+          ],
         },
         {
           type: 'authenticated',
@@ -456,6 +463,10 @@ export default {
             'api::fast.fast.create',
             'api::fast.fast.update',
             'api::fast.fast.delete',
+            // Content creation is further gated server-side (Pro tier +
+            // rate limit). Update/delete intentionally omitted — content
+            // entries are admin-managed after creation.
+            'api::content.content.create',
           ],
         },
       ];

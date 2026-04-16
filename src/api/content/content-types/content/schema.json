@@ -1,0 +1,86 @@
+{
+  "kind": "collectionType",
+  "collectionName": "contents",
+  "info": {
+    "singularName": "content",
+    "pluralName": "contents",
+    "displayName": "Content",
+    "description": "Long-form community content — AI-generated summaries today, future blog/article/guide types tomorrow. Distinct from social posts: generated-once, permanent, globally readable."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true,
+      "maxLength": 200
+    },
+    "description": {
+      "type": "text",
+      "maxLength": 500
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "title"
+    },
+    "content": {
+      "type": "richtext"
+    },
+    "contentType": {
+      "type": "enumeration",
+      "enum": ["video", "article", "blog", "guide"],
+      "required": true,
+      "default": "video"
+    },
+    "sourceUrl": {
+      "type": "text",
+      "maxLength": 2000
+    },
+    "youtubeVideoId": {
+      "type": "string",
+      "maxLength": 32
+    },
+    "videoTitle": {
+      "type": "string",
+      "maxLength": 300
+    },
+    "videoAuthor": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "videoThumbnailUrl": {
+      "type": "text",
+      "maxLength": 2000
+    },
+    "aiModel": {
+      "type": "string",
+      "maxLength": 100
+    },
+    "transcriptLanguage": {
+      "type": "string",
+      "maxLength": 10
+    },
+    "keyTakeaways": {
+      "type": "component",
+      "repeatable": true,
+      "component": "content.takeaway"
+    },
+    "sections": {
+      "type": "component",
+      "repeatable": true,
+      "component": "content.section"
+    },
+    "actionSteps": {
+      "type": "component",
+      "repeatable": true,
+      "component": "content.action-step"
+    },
+    "author": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::profile.profile"
+    }
+  }
+}

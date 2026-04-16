@@ -430,6 +430,82 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiContentContent extends Struct.CollectionTypeSchema {
+  collectionName: 'contents';
+  info: {
+    description: 'Long-form community content \u2014 AI-generated summaries today, future blog/article/guide types tomorrow. Distinct from social posts: generated-once, permanent, globally readable.';
+    displayName: 'Content';
+    pluralName: 'contents';
+    singularName: 'content';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    actionSteps: Schema.Attribute.Component<'content.action-step', true>;
+    aiModel: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 100;
+      }>;
+    author: Schema.Attribute.Relation<'manyToOne', 'api::profile.profile'>;
+    content: Schema.Attribute.RichText;
+    contentType: Schema.Attribute.Enumeration<
+      ['video', 'article', 'blog', 'guide']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'video'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 500;
+      }>;
+    keyTakeaways: Schema.Attribute.Component<'content.takeaway', true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::content.content'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    sections: Schema.Attribute.Component<'content.section', true>;
+    slug: Schema.Attribute.UID<'title'>;
+    sourceUrl: Schema.Attribute.Text &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 2000;
+      }>;
+    title: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 200;
+      }>;
+    transcriptLanguage: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 10;
+      }>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    videoAuthor: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 200;
+      }>;
+    videoThumbnailUrl: Schema.Attribute.Text &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 2000;
+      }>;
+    videoTitle: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 300;
+      }>;
+    youtubeVideoId: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 32;
+      }>;
+  };
+}
+
 export interface ApiFastFast extends Struct.CollectionTypeSchema {
   collectionName: 'fasts';
   info: {
@@ -1187,6 +1263,7 @@ declare module '@strapi/strapi' {
       'admin::transfer-token': AdminTransferToken;
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
+      'api::content.content': ApiContentContent;
       'api::fast.fast': ApiFastFast;
       'api::post.post': ApiPostPost;
       'api::profile.profile': ApiProfileProfile;
