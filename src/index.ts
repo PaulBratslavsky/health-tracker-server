@@ -307,46 +307,55 @@ export default {
       }
 
       // Pattern D, Rule 6: fast.findMany / findOne / findFirst — owner-only
-      // at all times. Anonymous callers get nothing; authenticated callers
-      // can only see their own fasts. Fasts never leak across profiles.
+      // for end-user API callers. Anonymous callers get nothing; users-
+      // permissions users see only their own fasts. Strapi admin panel
+      // callers (authenticated via the `admin` strategy, not users-
+      // permissions) are EXEMPT — admins need to see all entries for
+      // moderation / support, and they come from a different user table so
+      // the profile lookup we use below would fail and hide everything.
       if (
         context.uid === 'api::fast.fast' &&
         (context.action === 'findMany' ||
           context.action === 'findOne' ||
           context.action === 'findFirst')
       ) {
-        if (!user) {
-          // Anonymous — force-empty the result set via an impossible filter.
-          const params = (context.params ?? {}) as {
-            filters?: Record<string, unknown>;
-          };
-          params.filters = { ...(params.filters ?? {}), author: { documentId: '__none__' } };
-          context.params = params as typeof context.params;
-        } else {
-          const fullUser: any = await strapi
-            .documents('plugin::users-permissions.user')
-            .findOne({
-              documentId: user.documentId,
-              populate: { profile: true },
-            });
-          const profileDocId = fullUser?.profile?.documentId;
-          if (!profileDocId) {
+        const authStrategy = (requestCtx?.state?.auth as any)?.strategy?.name;
+        const isAdminCaller = authStrategy === 'admin';
+
+        if (!isAdminCaller) {
+          if (!user) {
+            // Anonymous — force-empty the result set via an impossible filter.
             const params = (context.params ?? {}) as {
               filters?: Record<string, unknown>;
             };
             params.filters = { ...(params.filters ?? {}), author: { documentId: '__none__' } };
             context.params = params as typeof context.params;
           } else {
-            const params = (context.params ?? {}) as {
-              filters?: Record<string, unknown>;
-            };
-            const existingFilters = (params.filters ?? {}) as Record<string, unknown>;
-            const existingAuthor = (existingFilters.author ?? {}) as Record<string, unknown>;
-            params.filters = {
-              ...existingFilters,
-              author: { ...existingAuthor, documentId: profileDocId },
-            };
-            context.params = params as typeof context.params;
+            const fullUser: any = await strapi
+              .documents('plugin::users-permissions.user')
+              .findOne({
+                documentId: user.documentId,
+                populate: { profile: true },
+              });
+            const profileDocId = fullUser?.profile?.documentId;
+            if (!profileDocId) {
+              const params = (context.params ?? {}) as {
+                filters?: Record<string, unknown>;
+              };
+              params.filters = { ...(params.filters ?? {}), author: { documentId: '__none__' } };
+              context.params = params as typeof context.params;
+            } else {
+              const params = (context.params ?? {}) as {
+                filters?: Record<string, unknown>;
+              };
+              const existingFilters = (params.filters ?? {}) as Record<string, unknown>;
+              const existingAuthor = (existingFilters.author ?? {}) as Record<string, unknown>;
+              params.filters = {
+                ...existingFilters,
+                author: { ...existingAuthor, documentId: profileDocId },
+              };
+              context.params = params as typeof context.params;
+            }
           }
         }
       }
